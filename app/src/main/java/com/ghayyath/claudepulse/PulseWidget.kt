@@ -16,20 +16,17 @@ class PulseWidget : AppWidgetProvider() {
 
     companion object {
         private val executor = Executors.newSingleThreadExecutor()
+        private const val BRAND_COLOR = 0xFF6ee7b7.toInt()
     }
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         for (appWidgetId in appWidgetIds) {
-            // Render immediately with cached data — NO async, NO executor
             renderWidget(context, appWidgetManager, appWidgetId)
-
-            // Schedule background refresh separately
             scheduleRefresh(context, appWidgetManager, appWidgetId)
         }
     }
 
     override fun onAppWidgetOptionsChanged(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int, newOptions: Bundle?) {
-        // Just re-render with cached data — no network call
         renderWidget(context, appWidgetManager, appWidgetId)
     }
 
@@ -53,15 +50,12 @@ class PulseWidget : AppWidgetProvider() {
     }
 
     private fun scheduleRefresh(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
-        // This runs AFTER renderWidget has already completed successfully.
-        // If this crashes, the widget still shows cached data.
         try {
             executor.execute {
                 try {
                     val freshData = ApiClient.fetchUsage(context)
                     if (freshData.error == null) {
                         cacheData(context, freshData)
-                        // Re-render with fresh data
                         renderWidget(context, appWidgetManager, appWidgetId)
                     }
                 } catch (_: Exception) {}
@@ -72,21 +66,29 @@ class PulseWidget : AppWidgetProvider() {
     private fun buildFullViews(context: Context, data: UsageData): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_layout)
 
-        val fiveHourPct = data.fiveHourUtilization.toInt().coerceIn(0, 100)
+        val sessionPct = data.fiveHourUtilization.toInt().coerceIn(0, 100)
         val weeklyPct = data.sevenDayUtilization.toInt().coerceIn(0, 100)
+        val sonnetPct = data.sonnetUtilization.toInt().coerceIn(0, 100)
 
         views.setTextViewText(R.id.updated_ago, formatTimeSince(data.cachedAt))
 
-        views.setProgressBar(R.id.five_hour_bar, 100, fiveHourPct, false)
-        views.setTextViewText(R.id.five_hour_pct, "${fiveHourPct}%")
+        // Session
+        views.setProgressBar(R.id.five_hour_bar, 100, sessionPct, false)
+        views.setTextViewText(R.id.five_hour_pct, "${sessionPct}%")
         views.setTextViewText(R.id.five_hour_reset, formatResetTime(data.fiveHourResetsAt))
+        views.setTextColor(R.id.five_hour_pct, BRAND_COLOR)
 
+        // Weekly
         views.setProgressBar(R.id.weekly_bar, 100, weeklyPct, false)
         views.setTextViewText(R.id.weekly_pct, "${weeklyPct}%")
         views.setTextViewText(R.id.weekly_reset, formatResetTime(data.sevenDayResetsAt))
+        views.setTextColor(R.id.weekly_pct, BRAND_COLOR)
 
-        views.setTextColor(R.id.five_hour_pct, getThresholdColor(fiveHourPct))
-        views.setTextColor(R.id.weekly_pct, getThresholdColor(weeklyPct))
+        // Sonnet
+        views.setProgressBar(R.id.sonnet_bar, 100, sonnetPct, false)
+        views.setTextViewText(R.id.sonnet_pct, "${sonnetPct}%")
+        views.setTextViewText(R.id.sonnet_reset, formatResetTime(data.sonnetResetsAt))
+        views.setTextColor(R.id.sonnet_pct, BRAND_COLOR)
 
         return views
     }
@@ -94,25 +96,23 @@ class PulseWidget : AppWidgetProvider() {
     private fun buildCompactViews(context: Context, data: UsageData): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_layout_small)
 
-        val fiveHourPct = data.fiveHourUtilization.toInt().coerceIn(0, 100)
+        val sessionPct = data.fiveHourUtilization.toInt().coerceIn(0, 100)
         val weeklyPct = data.sevenDayUtilization.toInt().coerceIn(0, 100)
+        val sonnetPct = data.sonnetUtilization.toInt().coerceIn(0, 100)
 
-        views.setProgressBar(R.id.five_hour_bar, 100, fiveHourPct, false)
-        views.setTextViewText(R.id.five_hour_pct, "${fiveHourPct}%")
+        views.setProgressBar(R.id.five_hour_bar, 100, sessionPct, false)
+        views.setTextViewText(R.id.five_hour_pct, "${sessionPct}%")
+        views.setTextColor(R.id.five_hour_pct, BRAND_COLOR)
+
         views.setProgressBar(R.id.weekly_bar, 100, weeklyPct, false)
         views.setTextViewText(R.id.weekly_pct, "${weeklyPct}%")
+        views.setTextColor(R.id.weekly_pct, BRAND_COLOR)
 
-        views.setTextColor(R.id.five_hour_pct, getThresholdColor(fiveHourPct))
-        views.setTextColor(R.id.weekly_pct, getThresholdColor(weeklyPct))
+        views.setProgressBar(R.id.sonnet_bar, 100, sonnetPct, false)
+        views.setTextViewText(R.id.sonnet_pct, "${sonnetPct}%")
+        views.setTextColor(R.id.sonnet_pct, BRAND_COLOR)
 
         return views
-    }
-
-    private fun getThresholdColor(pct: Int): Int = when {
-        pct >= 90 -> 0xFFF44336.toInt()
-        pct >= 75 -> 0xFFFF5722.toInt()
-        pct >= 50 -> 0xFFFF9800.toInt()
-        else -> 0xFF4CAF50.toInt()
     }
 
     private fun formatResetTime(isoTime: String?): String {
@@ -162,6 +162,8 @@ class PulseWidget : AppWidgetProvider() {
             .putString("five_hour_reset", data.fiveHourResetsAt)
             .putFloat("seven_day", data.sevenDayUtilization.toFloat())
             .putString("seven_day_reset", data.sevenDayResetsAt)
+            .putFloat("sonnet", data.sonnetUtilization.toFloat())
+            .putString("sonnet_reset", data.sonnetResetsAt)
             .putString("cached_at", data.cachedAt)
             .apply()
     }
@@ -174,6 +176,8 @@ class PulseWidget : AppWidgetProvider() {
             fiveHourResetsAt = prefs.getString("five_hour_reset", null),
             sevenDayUtilization = prefs.getFloat("seven_day", 0f).toDouble(),
             sevenDayResetsAt = prefs.getString("seven_day_reset", null),
+            sonnetUtilization = prefs.getFloat("sonnet", 0f).toDouble(),
+            sonnetResetsAt = prefs.getString("sonnet_reset", null),
             cachedAt = prefs.getString("cached_at", null)
         )
     }

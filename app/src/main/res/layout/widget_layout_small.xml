@@ -8,19 +8,19 @@
     android:padding="8dp"
     android:gravity="center_vertical">
 
-    <!-- 5-Hour row -->
+    <!-- Session -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="6dp">
+        android:layout_marginBottom="4dp">
 
         <ProgressBar
             android:id="@+id/five_hour_bar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="0dp"
-            android:layout_height="8dp"
+            android:layout_height="6dp"
             android:layout_weight="1"
             android:max="100"
             android:progress="0"
@@ -29,27 +29,28 @@
 
         <TextView
             android:id="@+id/five_hour_pct"
-            android:layout_width="36dp"
+            android:layout_width="32dp"
             android:layout_height="wrap_content"
             android:text="0%"
-            android:textColor="#4CAF50"
-            android:textSize="12sp"
+            android:textColor="#6ee7b7"
+            android:textSize="11sp"
             android:textStyle="bold"
             android:gravity="end" />
     </LinearLayout>
 
-    <!-- Weekly row -->
+    <!-- Weekly -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:layout_marginBottom="4dp">
 
         <ProgressBar
             android:id="@+id/weekly_bar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="0dp"
-            android:layout_height="8dp"
+            android:layout_height="6dp"
             android:layout_weight="1"
             android:max="100"
             android:progress="0"
@@ -58,11 +59,40 @@
 
         <TextView
             android:id="@+id/weekly_pct"
-            android:layout_width="36dp"
+            android:layout_width="32dp"
             android:layout_height="wrap_content"
             android:text="0%"
-            android:textColor="#4CAF50"
-            android:textSize="12sp"
+            android:textColor="#6ee7b7"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <!-- Sonnet -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ProgressBar
+            android:id="@+id/sonnet_bar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="6dp"
+            android:layout_weight="1"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/progress_bar_green"
+            android:layout_marginEnd="6dp" />
+
+        <TextView
+            android:id="@+id/sonnet_pct"
+            android:layout_width="32dp"
+            android:layout_height="wrap_content"
+            android:text="0%"
+            android:textColor="#6ee7b7"
+            android:textSize="11sp"
             android:textStyle="bold"
             android:gravity="end" />
     </LinearLayout>

@@ -40,6 +40,8 @@ object ApiClient {
             .putString("five_hour_reset", data.fiveHourResetsAt)
             .putFloat("seven_day", data.sevenDayUtilization.toFloat())
             .putString("seven_day_reset", data.sevenDayResetsAt)
+            .putFloat("sonnet", data.sonnetUtilization.toFloat())
+            .putString("sonnet_reset", data.sonnetResetsAt)
             .putString("cached_at", data.cachedAt)
             .apply()
     }
