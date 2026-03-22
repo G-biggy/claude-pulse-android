@@ -21,7 +21,7 @@ A resizable home screen widget that displays:
 - **Sonnet** — weekly Sonnet-specific usage
 - **Plan badge** — shows your subscription tier (Free / Pro / Max 5x / Max 20x)
 - **Reset countdowns** — time remaining until each window resets
-- **Color-coded** — brand green `#6ee7b7` under 50%, then yellow / orange / red as usage climbs
+- **Color-coded** — green `#6ee7b7` under 50%, then yellow / orange / red as usage climbs
 - **Refresh Now** — tap to force an immediate data refresh from the widget itself
 - **Auto-refresh** — updates every 10 minutes in the background
 
@@ -31,7 +31,7 @@ Percentage text changes color as usage climbs. Tap the widget body to open your 
 
 | Utilization | Color | Hex |
 |-------------|-------|-----|
-| 0–49% | 🟢 Green (brand) | `#6ee7b7` |
+| 0–49% | 🟢 Green | `#6ee7b7` |
 | 50–74% | 🟡 Yellow | `#FF9800` |
 | 75–89% | 🟠 Orange | `#FF5722` |
 | 90–100% | 🔴 Red | `#F44336` |
