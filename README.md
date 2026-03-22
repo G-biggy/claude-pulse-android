@@ -9,30 +9,33 @@ A minimal Android home screen widget that shows your Claude subscription usage a
 ---
 
 <p align="center">
-  <img src="docs/images/widget.png" width="360" alt="Claude Pulse widget on home screen" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/images/setup.png" width="280" alt="Claude Pulse setup screen" />
+  <img src="docs/images/widget.png" width="400" alt="Claude Pulse widget on home screen" />
 </p>
 
 ## What It Does
 
 A resizable home screen widget that displays:
 
-- **5-hour session utilization** — your current session window
-- **7-day rolling utilization** — weekly usage across all models
-- **Color-coded progress bars** — green / yellow / orange / red based on thresholds
+- **Session** — your current 5-hour session utilization
+- **Weekly** — 7-day rolling usage across all models
+- **Sonnet** — weekly Sonnet-specific usage
+- **Plan badge** — shows your subscription tier (Free / Pro / Max 5x / Max 20x)
 - **Reset countdowns** — time remaining until each window resets
+- **Refresh Now** — tap to force an immediate data refresh from the widget itself
 - **Auto-refresh** — updates every 10 minutes in the background
 
-Tap the widget to open your Claude usage page in the browser.
+All bars and text use a unified `#6ee7b7` brand color. Tap the widget body to open your Claude usage page in the browser.
 
 ### Widget Sizes
 
+The widget is fully resizable. Drag it wider or taller and the layout adapts:
+
 | Size | Layout |
 |------|--------|
-| **Compact** (3×1) | Two progress bars with percentages |
-| **Standard** (4×2) | Full layout with labels and reset timers |
-| **Expanded** (5×2) | Full layout with additional detail |
+| **Compact** | Three progress bars with percentages only |
+| **Standard** | Full layout with labels, reset timers, plan badge, and refresh button |
+
+The three bar rows distribute evenly across whatever height you give the widget — compact when small, relaxed when tall.
 
 ## How It Works
 
@@ -41,10 +44,11 @@ The app connects directly to Anthropic’s usage API from your phone. No server,
 ### Setup Flow
 
 1. On your computer, run a helper script to extract your OAuth refresh token from Claude Code
-2. Open Claude Pulse on your phone and paste the token into the setup screen
-3. Done — the app handles token refresh and API calls from that point on
+2. Open Claude Pulse on your phone and paste the token
+3. Tap **Connect** — the app verifies the token and starts fetching usage data
+4. Add the widget to your home screen from your launcher’s widget picker
 
-The refresh token is stored securely on your device using Android’s EncryptedSharedPreferences. Access tokens are refreshed automatically every ~8 hours.
+You can reopen the app at any time to update your token if needed.
 
 ### Why a Refresh Token?
 
@@ -92,6 +96,10 @@ Download the latest APK from the [Releases](../../releases) page, or build from 
 Transfer it to your phone and install. Android will ask you to allow installation from unknown sources — this is normal for sideloaded apps.
 
 ### 3. First Launch
+
+<p align="center">
+  <img src="docs/images/setup.png" width="280" alt="Claude Pulse setup screen" />
+</p>
 
 Open Claude Pulse → paste your refresh token → tap **Connect**. The app will verify the token and start fetching usage data. Add the widget to your home screen from your launcher’s widget picker.
 
@@ -148,15 +156,6 @@ The `client_id` is Claude Code’s official OAuth client ID.
 
 > **These endpoints are undocumented and may change without notice.** If the API changes, the widget will show an error state. Check this repo for updates.
 
-### Color Thresholds
-
-| Utilization | Color | Hex |
-|-------------|-------|-----|
-| 0–49% | 🟢 Green | `#4CAF50` |
-| 50–74% | 🟡 Yellow | `#FF9800` |
-| 75–89% | 🟠 Orange | `#FF5722` |
-| 90–100% | 🔴 Red | `#F44336` |
-
 ## Project Structure
 
 ```
@@ -165,9 +164,10 @@ claude-pulse-android/
 │   └── src/main/
 │       ├── java/com/.../claudepulse/
 │       │   ├── ApiClient.kt        # Anthropic API + token refresh
+│       │   ├── TokenManager.kt     # Secure token storage + auto-refresh
 │       │   ├── PulseWidget.kt      # Widget rendering and update logic
-│       │   ├── UsageData.kt        # Data models
-│       │   └── SetupActivity.kt    # One-time token setup screen
+│       │   ├── UsageData.kt        # Data models + plan detection
+│       │   └── SetupActivity.kt    # Token setup screen (reopenable)
 │       └── res/
 │           ├── layout/             # Widget layouts (compact + full)
 │           └── xml/                # Widget provider metadata
@@ -178,7 +178,7 @@ claude-pulse-android/
 
 ## Security Notes
 
-- Your refresh token is stored locally in EncryptedSharedPreferences — encrypted at rest on your device
+- Your refresh token is stored locally on your device
 - The token is never transmitted anywhere except directly to Anthropic’s servers over HTTPS
 - No analytics, no tracking, no telemetry — the app talks to exactly one domain: `anthropic.com`
 - The app requests only `INTERNET` and `RECEIVE_BOOT_COMPLETED` permissions
@@ -186,10 +186,10 @@ claude-pulse-android/
 ## Troubleshooting
 
 **Widget shows "Offline"**
-Check your internet connection. The widget retries on the next 10-minute cycle automatically.
+Check your internet connection. The widget retries on the next 10-minute cycle, or tap **Refresh Now**.
 
 **Widget shows "Auth Error"**
-Your refresh token may have been revoked. Re-extract it from Claude Code on your computer and paste it into the app’s setup screen.
+Your refresh token may have been revoked. Open the app from your launcher and paste a new token.
 
 **Widget doesn’t appear in widget picker**
 After installing the APK, you may need to restart your launcher. On most phones: long-press home screen → Widgets → search "Pulse".
@@ -198,7 +198,7 @@ After installing the APK, you may need to restart your launcher. On most phones:
 
 Companion project to [Claude Pulse · macOS](https://github.com/G-biggy/claude-pulse-mac).
 
-The concept of monitoring Claude usage from a glanceable surface was inspired by [Blimp-Labs/claude-usage-bar](https://github.com/Blimp-Labs/claude-usage-bar). This project takes a simpler approach — a home screen widget instead of a full app, with direct API access instead of browser-based scraping.
+Inspired by [Blimp-Labs/claude-usage-bar](https://github.com/Blimp-Labs/claude-usage-bar).
 
 ## Disclaimer
 

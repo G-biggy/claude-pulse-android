@@ -42,6 +42,7 @@ object ApiClient {
             .putString("seven_day_reset", data.sevenDayResetsAt)
             .putFloat("sonnet", data.sonnetUtilization.toFloat())
             .putString("sonnet_reset", data.sonnetResetsAt)
+            .putString("plan_label", data.planLabel)
             .putString("cached_at", data.cachedAt)
             .apply()
     }

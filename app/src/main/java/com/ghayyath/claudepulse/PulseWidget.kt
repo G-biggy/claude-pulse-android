@@ -3,6 +3,7 @@ package com.ghayyath.claudepulse
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -17,6 +18,18 @@ class PulseWidget : AppWidgetProvider() {
     companion object {
         private val executor = Executors.newSingleThreadExecutor()
         private const val BRAND_COLOR = 0xFF6ee7b7.toInt()
+        private const val ACTION_REFRESH = "com.ghayyath.claudepulse.ACTION_REFRESH"
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_REFRESH) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val widgetComponent = ComponentName(context, PulseWidget::class.java)
+            val widgetIds = appWidgetManager.getAppWidgetIds(widgetComponent)
+            onUpdate(context, appWidgetManager, widgetIds)
+            return
+        }
+        super.onReceive(context, intent)
     }
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
@@ -42,9 +55,19 @@ class PulseWidget : AppWidgetProvider() {
             buildFullViews(context, data)
         }
 
+        // Tap widget body -> open usage page
         val tapIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://claude.ai/settings/usage"))
-        val pi = PendingIntent.getActivity(context, 0, tapIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        views.setOnClickPendingIntent(R.id.widget_root, pi)
+        val tapPi = PendingIntent.getActivity(context, 0, tapIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        views.setOnClickPendingIntent(R.id.widget_root, tapPi)
+
+        // Tap "Refresh Now" -> trigger widget update
+        if (!isCompact) {
+            val refreshIntent = Intent(context, PulseWidget::class.java).apply {
+                action = ACTION_REFRESH
+            }
+            val refreshPi = PendingIntent.getBroadcast(context, 1, refreshIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            views.setOnClickPendingIntent(R.id.refresh_button, refreshPi)
+        }
 
         appWidgetManager.updateAppWidget(appWidgetId, views)
     }
@@ -70,6 +93,12 @@ class PulseWidget : AppWidgetProvider() {
         val weeklyPct = data.sevenDayUtilization.toInt().coerceIn(0, 100)
         val sonnetPct = data.sonnetUtilization.toInt().coerceIn(0, 100)
 
+        // Header
+        if (data.planLabel.isNotEmpty()) {
+            views.setTextViewText(R.id.plan_label, "\u00b7 ${data.planLabel}")
+        } else {
+            views.setTextViewText(R.id.plan_label, "")
+        }
         views.setTextViewText(R.id.updated_ago, formatTimeSince(data.cachedAt))
 
         // Session
@@ -87,7 +116,12 @@ class PulseWidget : AppWidgetProvider() {
         // Sonnet
         views.setProgressBar(R.id.sonnet_bar, 100, sonnetPct, false)
         views.setTextViewText(R.id.sonnet_pct, "${sonnetPct}%")
-        views.setTextViewText(R.id.sonnet_reset, formatResetTime(data.sonnetResetsAt))
+        val sonnetResetText = if (data.sonnetResetsAt.isNullOrEmpty() || data.sonnetResetsAt == "null") {
+            "No active limit"
+        } else {
+            formatResetTime(data.sonnetResetsAt)
+        }
+        views.setTextViewText(R.id.sonnet_reset, sonnetResetText)
         views.setTextColor(R.id.sonnet_pct, BRAND_COLOR)
 
         return views
@@ -118,9 +152,10 @@ class PulseWidget : AppWidgetProvider() {
     private fun formatResetTime(isoTime: String?): String {
         if (isoTime.isNullOrEmpty() || isoTime == "null") return ""
         return try {
-            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
             sdf.timeZone = TimeZone.getTimeZone("UTC")
-            val resetDate = sdf.parse(isoTime) ?: return ""
+            val cleaned = isoTime.replace(Regex("[+-]\\d{2}:\\d{2}$"), "").replace("Z", "")
+            val resetDate = sdf.parse(cleaned) ?: return ""
             val diffMs = resetDate.time - System.currentTimeMillis()
             if (diffMs <= 0) return "Resetting..."
             val hours = (diffMs / 3_600_000).toInt()
@@ -164,6 +199,7 @@ class PulseWidget : AppWidgetProvider() {
             .putString("seven_day_reset", data.sevenDayResetsAt)
             .putFloat("sonnet", data.sonnetUtilization.toFloat())
             .putString("sonnet_reset", data.sonnetResetsAt)
+            .putString("plan_label", data.planLabel)
             .putString("cached_at", data.cachedAt)
             .apply()
     }
@@ -178,6 +214,7 @@ class PulseWidget : AppWidgetProvider() {
             sevenDayResetsAt = prefs.getString("seven_day_reset", null),
             sonnetUtilization = prefs.getFloat("sonnet", 0f).toDouble(),
             sonnetResetsAt = prefs.getString("sonnet_reset", null),
+            planLabel = prefs.getString("plan_label", "") ?: "",
             cachedAt = prefs.getString("cached_at", null)
         )
     }

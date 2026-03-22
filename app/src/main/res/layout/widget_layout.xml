@@ -15,14 +15,24 @@
         android:layout_marginBottom="4dp">
 
         <TextView
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="CLAUDE PULSE"
             android:textColor="#FFFFFF"
             android:textSize="13sp"
             android:textStyle="bold"
             android:letterSpacing="0.05" />
+
+        <TextView
+            android:id="@+id/plan_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text=""
+            android:textColor="#6ee7b7"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:layout_marginStart="6dp" />
 
         <TextView
             android:id="@+id/updated_ago"
@@ -194,5 +204,15 @@
             android:textSize="9sp"
             android:paddingStart="62dp" />
     </LinearLayout>
+
+    <!-- Footer: Refresh -->
+    <TextView
+        android:id="@+id/refresh_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Refresh Now"
+        android:textColor="#6ee7b7"
+        android:textSize="11sp"
+        android:layout_marginTop="2dp" />
 
 </LinearLayout>
