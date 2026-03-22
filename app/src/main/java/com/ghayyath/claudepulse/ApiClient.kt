@@ -18,7 +18,6 @@ object ApiClient {
 
         val result = callUsageApi(token)
 
-        // On auth error, force refresh and retry once
         if (result.error == "HTTP 401" || result.error == "HTTP 403") {
             val freshToken = TokenManager.refreshAccessToken(context)
                 ?: return UsageData.placeholder().copy(error = "auth_error")
@@ -26,6 +25,23 @@ object ApiClient {
         }
 
         return result
+    }
+
+    /** Try using a token directly as an access token */
+    fun fetchUsageWithAccessToken(context: Context, accessToken: String): UsageData {
+        return callUsageApi(accessToken)
+    }
+
+    /** Cache usage data to SharedPreferences for widget to read */
+    fun cacheUsage(context: Context, data: UsageData) {
+        val prefs = context.getSharedPreferences("pulse_cache", Context.MODE_PRIVATE)
+        prefs.edit()
+            .putFloat("five_hour", data.fiveHourUtilization.toFloat())
+            .putString("five_hour_reset", data.fiveHourResetsAt)
+            .putFloat("seven_day", data.sevenDayUtilization.toFloat())
+            .putString("seven_day_reset", data.sevenDayResetsAt)
+            .putString("cached_at", data.cachedAt)
+            .apply()
     }
 
     private fun callUsageApi(accessToken: String): UsageData {
@@ -44,7 +60,6 @@ object ApiClient {
                 val body = conn.inputStream.bufferedReader().readText()
                 val json = JSONObject(body)
 
-                // API doesn't include cached_at — generate it locally
                 val now = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
                     timeZone = TimeZone.getTimeZone("UTC")
                 }.format(Date())

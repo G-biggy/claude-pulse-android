@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Mind dashboard favicon: heartbeat/pulse line in mint green -->
+    <!-- Scaled from 32x32 viewBox to 108x108, centered in 24-84 safe zone -->
+    <!-- Original path: M2,17 L8,17 L10,17 L12,12 L14,22 L16,8 L18,24 L20,13 L22,17 L24,17 L30,17 -->
+    <!-- Scale: x * 1.875 + 24, y * 1.875 + 22 (center in safe zone) -->
+    <path
+        android:pathData="M27.75,53.875 L39,53.875 L42.75,53.875 L46.5,44.5 L50.25,63.25 L54,37 L57.75,67 L61.5,46.375 L65.25,53.875 L69,53.875 L80.25,53.875"
+        android:strokeColor="#6ee7b7"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+
+</vector>

@@ -2,8 +2,6 @@ package com.ghayyath.claudepulse
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -18,65 +16,56 @@ object TokenManager {
     private const val REFRESH_URL = "https://console.anthropic.com/v1/oauth/token"
     private const val CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 
-    @Volatile
-    private var cachedPrefs: SharedPreferences? = null
-
     private fun getPrefs(context: Context): SharedPreferences {
-        return cachedPrefs ?: synchronized(this) {
-            cachedPrefs ?: EncryptedSharedPreferences.create(
-                PREFS_NAME,
-                MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC),
-                context.applicationContext,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            ).also { cachedPrefs = it }
-        }
+        return context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
     fun hasCredentials(context: Context): Boolean {
-        return getPrefs(context).getString(KEY_REFRESH_TOKEN, null) != null
+        val prefs = getPrefs(context)
+        return prefs.getString(KEY_REFRESH_TOKEN, null) != null ||
+               prefs.getString(KEY_ACCESS_TOKEN, null) != null
     }
 
     fun saveRefreshToken(context: Context, refreshToken: String) {
         getPrefs(context).edit()
             .putString(KEY_REFRESH_TOKEN, refreshToken)
-            .putString(KEY_ACCESS_TOKEN, null)
+            .remove(KEY_ACCESS_TOKEN)
             .putLong(KEY_EXPIRES_AT, 0)
-            .apply()
+            .commit()
+    }
+
+    /** Save an access token directly — no refresh token rotation */
+    fun saveAccessToken(context: Context, accessToken: String) {
+        // Set expiry to ~8 hours from now (access tokens last ~8h)
+        val expiresAt = System.currentTimeMillis() + (8 * 3600 * 1000)
+        getPrefs(context).edit()
+            .putString(KEY_ACCESS_TOKEN, accessToken)
+            .putLong(KEY_EXPIRES_AT, expiresAt)
+            .remove(KEY_REFRESH_TOKEN)
+            .commit()
     }
 
     fun clearCredentials(context: Context) {
-        getPrefs(context).edit().clear().apply()
+        getPrefs(context).edit().clear().commit()
     }
 
-    /**
-     * Returns a valid access token. Refreshes automatically if expired.
-     * Returns null if no credentials or refresh fails.
-     */
     fun getAccessToken(context: Context): String? {
         val prefs = getPrefs(context)
         val accessToken = prefs.getString(KEY_ACCESS_TOKEN, null)
         val expiresAt = prefs.getLong(KEY_EXPIRES_AT, 0)
 
-        // Return current token if still valid (with 5-min buffer)
         if (accessToken != null && System.currentTimeMillis() < expiresAt - 300_000) {
             return accessToken
         }
 
-        // Need to refresh
         return refreshAccessToken(context)
     }
 
-    /**
-     * Refreshes the access token using the stored refresh token.
-     * Synchronized to prevent concurrent refreshes from burning rotated tokens.
-     * Returns the new access token, or null on failure.
-     */
     @Synchronized
     fun refreshAccessToken(context: Context): String? {
         val prefs = getPrefs(context)
 
-        // Double-check: another thread may have already refreshed while we waited
+        // Double-check: another thread may have already refreshed
         val currentToken = prefs.getString(KEY_ACCESS_TOKEN, null)
         val currentExpiry = prefs.getLong(KEY_EXPIRES_AT, 0)
         if (currentToken != null && System.currentTimeMillis() < currentExpiry - 300_000) {
@@ -105,7 +94,7 @@ object TokenManager {
                 val response = JSONObject(conn.inputStream.bufferedReader().readText())
                 val newAccessToken = response.getString("access_token")
                 val newRefreshToken = response.optString("refresh_token", refreshToken)
-                val expiresIn = response.optLong("expires_in", 28800) // 8 hours default
+                val expiresIn = response.optLong("expires_in", 28800)
 
                 val expiresAt = System.currentTimeMillis() + (expiresIn * 1000)
 
@@ -113,7 +102,7 @@ object TokenManager {
                     .putString(KEY_ACCESS_TOKEN, newAccessToken)
                     .putString(KEY_REFRESH_TOKEN, newRefreshToken)
                     .putLong(KEY_EXPIRES_AT, expiresAt)
-                    .apply()
+                    .commit()  // sync write
 
                 newAccessToken
             } else {

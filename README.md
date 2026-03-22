@@ -8,6 +8,12 @@ A minimal Android home screen widget that shows your Claude subscription usage a
 
 ---
 
+<p align="center">
+  <img src="docs/images/widget.png" width="360" alt="Claude Pulse widget on home screen" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/images/setup.png" width="280" alt="Claude Pulse setup screen" />
+</p>
+
 ## What It Does
 
 A resizable home screen widget that displays:

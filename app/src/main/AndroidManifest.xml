@@ -6,13 +6,13 @@
 
     <application
         android:label="Claude Pulse"
-        android:icon="@android:drawable/ic_menu_compass"
+        android:icon="@mipmap/ic_launcher"
         android:supportsRtl="true">
 
         <activity
             android:name=".SetupActivity"
             android:exported="true"
-            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:theme="@android:style/Theme.Material.NoActionBar"
             android:label="Claude Pulse Setup">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

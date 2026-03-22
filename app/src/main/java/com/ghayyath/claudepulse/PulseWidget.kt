@@ -3,7 +3,6 @@ package com.ghayyath.claudepulse
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -21,104 +20,78 @@ class PulseWidget : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         for (appWidgetId in appWidgetIds) {
-            updateWidget(context, appWidgetManager, appWidgetId)
+            // Render immediately with cached data — NO async, NO executor
+            renderWidget(context, appWidgetManager, appWidgetId)
+
+            // Schedule background refresh separately
+            scheduleRefresh(context, appWidgetManager, appWidgetId)
         }
     }
 
     override fun onAppWidgetOptionsChanged(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int, newOptions: Bundle?) {
-        updateWidget(context, appWidgetManager, appWidgetId)
+        // Just re-render with cached data — no network call
+        renderWidget(context, appWidgetManager, appWidgetId)
     }
 
-    private fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
-        // Show loading state immediately
-        val loadingViews = RemoteViews(context.packageName, R.layout.widget_layout)
-        loadingViews.setTextViewText(R.id.updated_ago, "Updating...")
-        appWidgetManager.updateAppWidget(appWidgetId, loadingViews)
+    private fun renderWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
+        val data = loadCachedData(context) ?: UsageData.placeholder()
+        val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
+        val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)
+        val isCompact = minWidth < 200
 
-        val pendingResult = goAsync()
-        val appContext = context.applicationContext
-        executor.execute {
-            try {
-                val data = try {
-                    ApiClient.fetchUsage(appContext)
-                } catch (e: Exception) {
-                    loadCachedData(appContext) ?: UsageData.placeholder()
-                }
-
-                // Cache successful data
-                if (data.error == null) {
-                    cacheData(appContext, data)
-                }
-
-                val displayData = if (data.error != null) {
-                    loadCachedData(appContext) ?: data
-                } else {
-                    data
-                }
-
-                val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
-                val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)
-                val isCompact = minWidth < 200
-
-                val views = if (isCompact) {
-                    buildCompactViews(appContext, displayData, data.error != null)
-                } else {
-                    buildFullViews(appContext, displayData, data.error != null)
-                }
-
-                // Tap action: open setup on auth error, otherwise open Claude usage page
-                val isAuthError = data.error == "auth_error"
-                val tapIntent = if (isAuthError || !TokenManager.hasCredentials(appContext)) {
-                    Intent(appContext, SetupActivity::class.java).apply {
-                        putExtra("re_setup", true)
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                } else {
-                    Intent(Intent.ACTION_VIEW, Uri.parse("https://claude.ai/settings/usage"))
-                }
-                val pendingIntent = PendingIntent.getActivity(appContext, 0, tapIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-                views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
-
-                appWidgetManager.updateAppWidget(appWidgetId, views)
-            } finally {
-                pendingResult.finish()
-            }
+        val views = if (isCompact) {
+            buildCompactViews(context, data)
+        } else {
+            buildFullViews(context, data)
         }
+
+        val tapIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://claude.ai/settings/usage"))
+        val pi = PendingIntent.getActivity(context, 0, tapIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        views.setOnClickPendingIntent(R.id.widget_root, pi)
+
+        appWidgetManager.updateAppWidget(appWidgetId, views)
     }
 
-    private fun buildFullViews(context: Context, data: UsageData, isOffline: Boolean): RemoteViews {
+    private fun scheduleRefresh(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
+        // This runs AFTER renderWidget has already completed successfully.
+        // If this crashes, the widget still shows cached data.
+        try {
+            executor.execute {
+                try {
+                    val freshData = ApiClient.fetchUsage(context)
+                    if (freshData.error == null) {
+                        cacheData(context, freshData)
+                        // Re-render with fresh data
+                        renderWidget(context, appWidgetManager, appWidgetId)
+                    }
+                } catch (_: Exception) {}
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun buildFullViews(context: Context, data: UsageData): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_layout)
 
         val fiveHourPct = data.fiveHourUtilization.toInt().coerceIn(0, 100)
         val weeklyPct = data.sevenDayUtilization.toInt().coerceIn(0, 100)
 
-        // Title and update time
-        val statusText = when {
-            data.error == "auth_error" -> "Tap to re-setup"
-            isOffline -> "Offline"
-            else -> formatTimeSince(data.cachedAt)
-        }
-        views.setTextViewText(R.id.updated_ago, statusText)
+        views.setTextViewText(R.id.updated_ago, formatTimeSince(data.cachedAt))
 
-        // 5-hour bar
         views.setProgressBar(R.id.five_hour_bar, 100, fiveHourPct, false)
         views.setTextViewText(R.id.five_hour_pct, "${fiveHourPct}%")
         views.setTextViewText(R.id.five_hour_reset, formatResetTime(data.fiveHourResetsAt))
-        views.setInt(R.id.five_hour_bar, "setProgressTintList", 0) // handled by drawable
 
-        // Weekly bar
         views.setProgressBar(R.id.weekly_bar, 100, weeklyPct, false)
         views.setTextViewText(R.id.weekly_pct, "${weeklyPct}%")
         views.setTextViewText(R.id.weekly_reset, formatResetTime(data.sevenDayResetsAt))
 
-        // Color the percentage text based on threshold
         views.setTextColor(R.id.five_hour_pct, getThresholdColor(fiveHourPct))
         views.setTextColor(R.id.weekly_pct, getThresholdColor(weeklyPct))
 
         return views
     }
 
-    private fun buildCompactViews(context: Context, data: UsageData, isOffline: Boolean): RemoteViews {
+    private fun buildCompactViews(context: Context, data: UsageData): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_layout_small)
 
         val fiveHourPct = data.fiveHourUtilization.toInt().coerceIn(0, 100)
@@ -136,10 +109,10 @@ class PulseWidget : AppWidgetProvider() {
     }
 
     private fun getThresholdColor(pct: Int): Int = when {
-        pct >= 90 -> 0xFFF44336.toInt() // Red
-        pct >= 75 -> 0xFFFF5722.toInt() // Orange
-        pct >= 50 -> 0xFFFF9800.toInt() // Yellow
-        else -> 0xFF4CAF50.toInt()      // Green
+        pct >= 90 -> 0xFFF44336.toInt()
+        pct >= 75 -> 0xFFFF5722.toInt()
+        pct >= 50 -> 0xFFFF9800.toInt()
+        else -> 0xFF4CAF50.toInt()
     }
 
     private fun formatResetTime(isoTime: String?): String {
