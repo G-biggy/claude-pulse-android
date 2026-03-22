@@ -9,6 +9,17 @@
         android:icon="@android:drawable/ic_menu_compass"
         android:supportsRtl="true">
 
+        <activity
+            android:name=".SetupActivity"
+            android:exported="true"
+            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:label="Claude Pulse Setup">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <receiver
             android:name=".PulseWidget"
             android:exported="true"

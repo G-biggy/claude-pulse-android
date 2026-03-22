@@ -15,7 +15,9 @@ import java.util.concurrent.Executors
 
 class PulseWidget : AppWidgetProvider() {
 
-    private val executor = Executors.newSingleThreadExecutor()
+    companion object {
+        private val executor = Executors.newSingleThreadExecutor()
+    }
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         for (appWidgetId in appWidgetIds) {
@@ -33,40 +35,54 @@ class PulseWidget : AppWidgetProvider() {
         loadingViews.setTextViewText(R.id.updated_ago, "Updating...")
         appWidgetManager.updateAppWidget(appWidgetId, loadingViews)
 
+        val pendingResult = goAsync()
+        val appContext = context.applicationContext
         executor.execute {
-            val data = try {
-                ApiClient.fetchUsage()
-            } catch (e: Exception) {
-                loadCachedData(context) ?: UsageData.placeholder()
+            try {
+                val data = try {
+                    ApiClient.fetchUsage(appContext)
+                } catch (e: Exception) {
+                    loadCachedData(appContext) ?: UsageData.placeholder()
+                }
+
+                // Cache successful data
+                if (data.error == null) {
+                    cacheData(appContext, data)
+                }
+
+                val displayData = if (data.error != null) {
+                    loadCachedData(appContext) ?: data
+                } else {
+                    data
+                }
+
+                val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
+                val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)
+                val isCompact = minWidth < 200
+
+                val views = if (isCompact) {
+                    buildCompactViews(appContext, displayData, data.error != null)
+                } else {
+                    buildFullViews(appContext, displayData, data.error != null)
+                }
+
+                // Tap action: open setup on auth error, otherwise open Claude usage page
+                val isAuthError = data.error == "auth_error"
+                val tapIntent = if (isAuthError || !TokenManager.hasCredentials(appContext)) {
+                    Intent(appContext, SetupActivity::class.java).apply {
+                        putExtra("re_setup", true)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                } else {
+                    Intent(Intent.ACTION_VIEW, Uri.parse("https://claude.ai/settings/usage"))
+                }
+                val pendingIntent = PendingIntent.getActivity(appContext, 0, tapIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
+
+                appWidgetManager.updateAppWidget(appWidgetId, views)
+            } finally {
+                pendingResult.finish()
             }
-
-            // Cache successful data
-            if (data.error == null) {
-                cacheData(context, data)
-            }
-
-            val displayData = if (data.error != null) {
-                loadCachedData(context) ?: data
-            } else {
-                data
-            }
-
-            val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
-            val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)
-            val isCompact = minWidth < 200
-
-            val views = if (isCompact) {
-                buildCompactViews(context, displayData, data.error != null)
-            } else {
-                buildFullViews(context, displayData, data.error != null)
-            }
-
-            // Tap → open Claude usage page
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://claude.ai/settings/usage"))
-            val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-            views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
-
-            appWidgetManager.updateAppWidget(appWidgetId, views)
         }
     }
 
@@ -77,7 +93,11 @@ class PulseWidget : AppWidgetProvider() {
         val weeklyPct = data.sevenDayUtilization.toInt().coerceIn(0, 100)
 
         // Title and update time
-        val statusText = if (isOffline) "Offline" else formatTimeSince(data.cachedAt)
+        val statusText = when {
+            data.error == "auth_error" -> "Tap to re-setup"
+            isOffline -> "Offline"
+            else -> formatTimeSince(data.cachedAt)
+        }
         views.setTextViewText(R.id.updated_ago, statusText)
 
         // 5-hour bar
