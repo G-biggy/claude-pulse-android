@@ -92,7 +92,7 @@ Open Claude Pulse → paste your refresh token → tap **Connect**. The app will
 ## Build from Source
 
 ```bash
-git clone https://github.com/ghayyath/claude-pulse-android.git
+git clone https://github.com/G-biggy/claude-pulse-android.git
 cd claude-pulse-android
 
 # Requires Android SDK and Java 17+
@@ -117,7 +117,7 @@ apksigner sign --ks release.keystore --ks-key-alias pulse app/build/outputs/apk/
 
 ## API Details
 
-Same as the [Mac version](https://github.com/ghayyath/claude-pulse-mac) — this app uses **undocumented** Anthropic endpoints:
+Same as the [Mac version](https://github.com/G-biggy/claude-pulse-mac) — this app uses **undocumented** Anthropic endpoints:
 
 **Usage data:**
 ```
@@ -190,7 +190,7 @@ After installing the APK, you may need to restart your launcher. On most phones:
 
 ## Acknowledgments
 
-Companion project to [Claude Pulse · macOS](https://github.com/ghayyath/claude-pulse-mac).
+Companion project to [Claude Pulse · macOS](https://github.com/G-biggy/claude-pulse-mac).
 
 The concept of monitoring Claude usage from a glanceable surface was inspired by [Blimp-Labs/claude-usage-bar](https://github.com/Blimp-Labs/claude-usage-bar). This project takes a simpler approach — a home screen widget instead of a full app, with direct API access instead of browser-based scraping.
 
