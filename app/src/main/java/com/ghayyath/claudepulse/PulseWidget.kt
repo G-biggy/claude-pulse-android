@@ -17,7 +17,10 @@ class PulseWidget : AppWidgetProvider() {
 
     companion object {
         private val executor = Executors.newSingleThreadExecutor()
-        private const val BRAND_COLOR = 0xFF6ee7b7.toInt()
+        private const val COLOR_GREEN = 0xFF6ee7b7.toInt()  // 0-49%
+        private const val COLOR_YELLOW = 0xFFFF9800.toInt() // 50-74%
+        private const val COLOR_ORANGE = 0xFFFF5722.toInt() // 75-89%
+        private const val COLOR_RED = 0xFFF44336.toInt()    // 90-100%
         private const val ACTION_REFRESH = "com.ghayyath.claudepulse.ACTION_REFRESH"
     }
 
@@ -105,13 +108,13 @@ class PulseWidget : AppWidgetProvider() {
         views.setProgressBar(R.id.five_hour_bar, 100, sessionPct, false)
         views.setTextViewText(R.id.five_hour_pct, "${sessionPct}%")
         views.setTextViewText(R.id.five_hour_reset, formatResetTime(data.fiveHourResetsAt))
-        views.setTextColor(R.id.five_hour_pct, BRAND_COLOR)
+        views.setTextColor(R.id.five_hour_pct, getColor(sessionPct))
 
         // Weekly
         views.setProgressBar(R.id.weekly_bar, 100, weeklyPct, false)
         views.setTextViewText(R.id.weekly_pct, "${weeklyPct}%")
         views.setTextViewText(R.id.weekly_reset, formatResetTime(data.sevenDayResetsAt))
-        views.setTextColor(R.id.weekly_pct, BRAND_COLOR)
+        views.setTextColor(R.id.weekly_pct, getColor(weeklyPct))
 
         // Sonnet
         views.setProgressBar(R.id.sonnet_bar, 100, sonnetPct, false)
@@ -122,7 +125,7 @@ class PulseWidget : AppWidgetProvider() {
             formatResetTime(data.sonnetResetsAt)
         }
         views.setTextViewText(R.id.sonnet_reset, sonnetResetText)
-        views.setTextColor(R.id.sonnet_pct, BRAND_COLOR)
+        views.setTextColor(R.id.sonnet_pct, getColor(sonnetPct))
 
         return views
     }
@@ -136,17 +139,24 @@ class PulseWidget : AppWidgetProvider() {
 
         views.setProgressBar(R.id.five_hour_bar, 100, sessionPct, false)
         views.setTextViewText(R.id.five_hour_pct, "${sessionPct}%")
-        views.setTextColor(R.id.five_hour_pct, BRAND_COLOR)
+        views.setTextColor(R.id.five_hour_pct, getColor(sessionPct))
 
         views.setProgressBar(R.id.weekly_bar, 100, weeklyPct, false)
         views.setTextViewText(R.id.weekly_pct, "${weeklyPct}%")
-        views.setTextColor(R.id.weekly_pct, BRAND_COLOR)
+        views.setTextColor(R.id.weekly_pct, getColor(weeklyPct))
 
         views.setProgressBar(R.id.sonnet_bar, 100, sonnetPct, false)
         views.setTextViewText(R.id.sonnet_pct, "${sonnetPct}%")
-        views.setTextColor(R.id.sonnet_pct, BRAND_COLOR)
+        views.setTextColor(R.id.sonnet_pct, getColor(sonnetPct))
 
         return views
+    }
+
+    private fun getColor(pct: Int): Int = when {
+        pct >= 90 -> COLOR_RED
+        pct >= 75 -> COLOR_ORANGE
+        pct >= 50 -> COLOR_YELLOW
+        else -> COLOR_GREEN
     }
 
     private fun formatResetTime(isoTime: String?): String {
