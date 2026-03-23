@@ -9,9 +9,11 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.RemoteViews
+import androidx.work.*
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class PulseWidget : AppWidgetProvider() {
 
@@ -22,6 +24,7 @@ class PulseWidget : AppWidgetProvider() {
         private const val COLOR_ORANGE = 0xFFFF5722.toInt() // 75-89%
         private const val COLOR_RED = 0xFFF44336.toInt()    // 90-100%
         private const val ACTION_REFRESH = "com.ghayyath.claudepulse.ACTION_REFRESH"
+        private const val WORK_NAME = "pulse_periodic_refresh"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -35,7 +38,19 @@ class PulseWidget : AppWidgetProvider() {
         super.onReceive(context, intent)
     }
 
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        enqueuePeriodicRefresh(context)
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+    }
+
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+        // Ensure WorkManager is scheduled (survives reboots/force-stops)
+        enqueuePeriodicRefresh(context)
         for (appWidgetId in appWidgetIds) {
             renderWidget(context, appWidgetManager, appWidgetId)
             scheduleRefresh(context, appWidgetManager, appWidgetId)
@@ -44,6 +59,23 @@ class PulseWidget : AppWidgetProvider() {
 
     override fun onAppWidgetOptionsChanged(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int, newOptions: Bundle?) {
         renderWidget(context, appWidgetManager, appWidgetId)
+    }
+
+    private fun enqueuePeriodicRefresh(context: Context) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val work = PeriodicWorkRequestBuilder<RefreshWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 5, TimeUnit.MINUTES)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            work
+        )
     }
 
     private fun renderWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {

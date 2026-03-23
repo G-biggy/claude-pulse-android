@@ -9,7 +9,9 @@ import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
+import androidx.work.*
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class SetupActivity : Activity() {
 
@@ -63,6 +65,7 @@ class SetupActivity : Activity() {
                         connectButton.isEnabled = true
                         tokenInput.text.clear()
                         triggerWidgetUpdate()
+                        ensurePeriodicRefresh()
                     }
                     return@execute
                 }
@@ -82,6 +85,7 @@ class SetupActivity : Activity() {
                         connectButton.isEnabled = true
                         tokenInput.text.clear()
                         triggerWidgetUpdate()
+                        ensurePeriodicRefresh()
                     } else {
                         statusText.text = "Invalid token. Check and try again."
                         statusText.setTextColor(0xFFF44336.toInt())
@@ -96,6 +100,23 @@ class SetupActivity : Activity() {
     override fun onDestroy() {
         super.onDestroy()
         executor.shutdownNow()
+    }
+
+    private fun ensurePeriodicRefresh() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val work = PeriodicWorkRequestBuilder<RefreshWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 5, TimeUnit.MINUTES)
+            .build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "pulse_periodic_refresh",
+            ExistingPeriodicWorkPolicy.KEEP,
+            work
+        )
     }
 
     private fun triggerWidgetUpdate() {
