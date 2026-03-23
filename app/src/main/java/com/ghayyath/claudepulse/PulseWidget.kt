@@ -6,7 +6,9 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.widget.RemoteViews
 import androidx.work.*
@@ -49,7 +51,6 @@ class PulseWidget : AppWidgetProvider() {
     }
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-        // Ensure WorkManager is scheduled (survives reboots/force-stops)
         enqueuePeriodicRefresh(context)
         for (appWidgetId in appWidgetIds) {
             renderWidget(context, appWidgetManager, appWidgetId)
@@ -121,6 +122,13 @@ class PulseWidget : AppWidgetProvider() {
         } catch (_: Exception) {}
     }
 
+    /** Tint a ProgressBar's fill color to match the percentage tier (API 31+, green fallback on older) */
+    private fun setBarTint(views: RemoteViews, barId: Int, pct: Int) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            views.setColorStateList(barId, "setProgressTintList", ColorStateList.valueOf(getColor(pct)))
+        }
+    }
+
     private fun buildFullViews(context: Context, data: UsageData): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_layout)
 
@@ -141,12 +149,14 @@ class PulseWidget : AppWidgetProvider() {
         views.setTextViewText(R.id.five_hour_pct, "${sessionPct}%")
         views.setTextViewText(R.id.five_hour_reset, formatResetTime(data.fiveHourResetsAt))
         views.setTextColor(R.id.five_hour_pct, getColor(sessionPct))
+        setBarTint(views, R.id.five_hour_bar, sessionPct)
 
         // Weekly
         views.setProgressBar(R.id.weekly_bar, 100, weeklyPct, false)
         views.setTextViewText(R.id.weekly_pct, "${weeklyPct}%")
         views.setTextViewText(R.id.weekly_reset, formatResetTime(data.sevenDayResetsAt))
         views.setTextColor(R.id.weekly_pct, getColor(weeklyPct))
+        setBarTint(views, R.id.weekly_bar, weeklyPct)
 
         // Sonnet
         views.setProgressBar(R.id.sonnet_bar, 100, sonnetPct, false)
@@ -158,6 +168,7 @@ class PulseWidget : AppWidgetProvider() {
         }
         views.setTextViewText(R.id.sonnet_reset, sonnetResetText)
         views.setTextColor(R.id.sonnet_pct, getColor(sonnetPct))
+        setBarTint(views, R.id.sonnet_bar, sonnetPct)
 
         return views
     }
@@ -172,14 +183,17 @@ class PulseWidget : AppWidgetProvider() {
         views.setProgressBar(R.id.five_hour_bar, 100, sessionPct, false)
         views.setTextViewText(R.id.five_hour_pct, "${sessionPct}%")
         views.setTextColor(R.id.five_hour_pct, getColor(sessionPct))
+        setBarTint(views, R.id.five_hour_bar, sessionPct)
 
         views.setProgressBar(R.id.weekly_bar, 100, weeklyPct, false)
         views.setTextViewText(R.id.weekly_pct, "${weeklyPct}%")
         views.setTextColor(R.id.weekly_pct, getColor(weeklyPct))
+        setBarTint(views, R.id.weekly_bar, weeklyPct)
 
         views.setProgressBar(R.id.sonnet_bar, 100, sonnetPct, false)
         views.setTextViewText(R.id.sonnet_pct, "${sonnetPct}%")
         views.setTextColor(R.id.sonnet_pct, getColor(sonnetPct))
+        setBarTint(views, R.id.sonnet_bar, sonnetPct)
 
         return views
     }
