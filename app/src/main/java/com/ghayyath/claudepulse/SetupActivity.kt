@@ -46,14 +46,34 @@ class SetupActivity : Activity() {
                 val result = ApiClient.fetchUsage(appContext)
                 runOnUiThread {
                     if (isFinishing) return@runOnUiThread
-                    if (result.error == null) {
-                        // Token is valid
-                        statusText.text = "Connected \u2714"
-                        statusText.setTextColor(0xFF4CAF50.toInt())
-                        errorBanner.visibility = View.GONE
-                    } else {
-                        // Token is expired/invalid — show recovery banner
-                        showErrorState(statusText, errorBanner, tokenInput)
+                    when (result.error) {
+                        null -> {
+                            // Token is valid
+                            statusText.text = "Connected \u2714"
+                            statusText.setTextColor(0xFF4CAF50.toInt())
+                            errorBanner.visibility = View.GONE
+                        }
+                        "auth_error" -> {
+                            // Token is expired/invalid — show recovery banner
+                            showErrorState(statusText, errorBanner, tokenInput)
+                        }
+                        "rate_limited" -> {
+                            statusText.text = "Connected \u2714 Usage data temporarily unavailable (rate limited)"
+                            statusText.setTextColor(0xFF4CAF50.toInt())
+                            statusText.visibility = View.VISIBLE
+                            errorBanner.visibility = View.GONE
+                            val masked = TokenManager.getMaskedToken(this@SetupActivity)
+                            if (masked != null) tokenInput.hint = masked
+                        }
+                        else -> {
+                            // Network error or other — assume token is probably fine
+                            statusText.text = "Connected \u2714 Could not verify (offline?)"
+                            statusText.setTextColor(0xFFAAAAAA.toInt())
+                            statusText.visibility = View.VISIBLE
+                            errorBanner.visibility = View.GONE
+                            val masked = TokenManager.getMaskedToken(this@SetupActivity)
+                            if (masked != null) tokenInput.hint = masked
+                        }
                     }
                 }
             }

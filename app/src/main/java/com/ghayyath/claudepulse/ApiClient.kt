@@ -18,7 +18,7 @@ object ApiClient {
 
         val result = callUsageApi(token)
 
-        if (result.error == "HTTP 401" || result.error == "HTTP 403") {
+        if (result.error == "auth_error") {
             val freshToken = TokenManager.refreshAccessToken(context)
                 ?: return UsageData.placeholder().copy(error = "auth_error")
             return callUsageApi(freshToken)
@@ -69,7 +69,22 @@ object ApiClient {
 
                 UsageData.fromJson(json).copy(cachedAt = now)
             } else {
-                UsageData.placeholder().copy(error = "HTTP ${conn.responseCode}")
+                val errorType = when (conn.responseCode) {
+                    401, 403 -> "auth_error"
+                    429 -> "rate_limited"
+                    else -> {
+                        // Check error body for rate_limit_error type
+                        val errorBody = try { conn.errorStream?.bufferedReader()?.readText() } catch (_: Exception) { null }
+                        if (errorBody != null) {
+                            try {
+                                val errorJson = JSONObject(errorBody)
+                                val type = errorJson.optJSONObject("error")?.optString("type")
+                                if (type == "rate_limit_error") "rate_limited" else "HTTP ${conn.responseCode}"
+                            } catch (_: Exception) { "HTTP ${conn.responseCode}" }
+                        } else "HTTP ${conn.responseCode}"
+                    }
+                }
+                UsageData.placeholder().copy(error = errorType)
             }
         } catch (e: Exception) {
             UsageData.placeholder().copy(error = "Offline")
