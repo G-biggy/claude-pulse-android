@@ -61,6 +61,15 @@ object TokenManager {
         return refreshAccessToken(context)
     }
 
+    fun getMaskedToken(context: Context): String? {
+        val prefs = getPrefs(context)
+        val token = prefs.getString(KEY_ACCESS_TOKEN, null)
+            ?: prefs.getString(KEY_REFRESH_TOKEN, null)
+            ?: return null
+        if (token.length < 8) return "****"
+        return "${token.take(4)}...${token.takeLast(4)}"
+    }
+
     @Synchronized
     fun refreshAccessToken(context: Context): String? {
         val prefs = getPrefs(context)

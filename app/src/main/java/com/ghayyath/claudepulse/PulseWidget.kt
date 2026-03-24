@@ -81,6 +81,8 @@ class PulseWidget : AppWidgetProvider() {
 
     private fun renderWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
         val data = loadCachedData(context) ?: UsageData.placeholder()
+        val prefs = context.getSharedPreferences("pulse_cache", Context.MODE_PRIVATE)
+        val hasAuthError = prefs.getBoolean("auth_error", false)
         val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
         val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)
         val isCompact = minWidth < 200
@@ -88,21 +90,30 @@ class PulseWidget : AppWidgetProvider() {
         val views = if (isCompact) {
             buildCompactViews(context, data)
         } else {
-            buildFullViews(context, data)
+            buildFullViews(context, data, hasAuthError)
         }
 
-        // Tap widget body -> open usage page
-        val tapIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://claude.ai/settings/usage"))
-        val tapPi = PendingIntent.getActivity(context, 0, tapIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        views.setOnClickPendingIntent(R.id.widget_root, tapPi)
-
-        // Tap "Refresh Now" -> trigger widget update
         if (!isCompact) {
+            if (hasAuthError) {
+                // Tap widget body -> open SetupActivity for token recovery
+                val setupIntent = Intent(context, SetupActivity::class.java)
+                val setupPi = PendingIntent.getActivity(context, 0, setupIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                views.setOnClickPendingIntent(R.id.widget_root, setupPi)
+            } else {
+                // No body tap target — removed per spec (footer has Usage Page link)
+            }
+
+            // Tap "Refresh Now" -> trigger widget update
             val refreshIntent = Intent(context, PulseWidget::class.java).apply {
                 action = ACTION_REFRESH
             }
             val refreshPi = PendingIntent.getBroadcast(context, 1, refreshIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             views.setOnClickPendingIntent(R.id.refresh_button, refreshPi)
+
+            // Tap "Usage Page" -> open usage page in browser
+            val usageIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://claude.ai/settings/usage"))
+            val usagePi = PendingIntent.getActivity(context, 2, usageIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            views.setOnClickPendingIntent(R.id.usage_page_button, usagePi)
         }
 
         appWidgetManager.updateAppWidget(appWidgetId, views)
@@ -129,8 +140,37 @@ class PulseWidget : AppWidgetProvider() {
         }
     }
 
-    private fun buildFullViews(context: Context, data: UsageData): RemoteViews {
+    private fun buildFullViews(context: Context, data: UsageData, hasAuthError: Boolean = false): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_layout)
+
+        if (hasAuthError) {
+            // Error state: show dashes instead of stale numbers, red status text
+            if (data.planLabel.isNotEmpty()) {
+                views.setTextViewText(R.id.plan_label, "\u00b7 ${data.planLabel}")
+            } else {
+                views.setTextViewText(R.id.plan_label, "")
+            }
+            views.setTextViewText(R.id.updated_ago, "Token expired \u00b7 Tap to fix")
+            views.setTextColor(R.id.updated_ago, COLOR_RED)
+
+            // All bars to 0, all percentages to em dash
+            views.setProgressBar(R.id.five_hour_bar, 100, 0, false)
+            views.setTextViewText(R.id.five_hour_pct, "\u2014")
+            views.setTextViewText(R.id.five_hour_reset, "")
+            views.setTextColor(R.id.five_hour_pct, COLOR_RED)
+
+            views.setProgressBar(R.id.weekly_bar, 100, 0, false)
+            views.setTextViewText(R.id.weekly_pct, "\u2014")
+            views.setTextViewText(R.id.weekly_reset, "")
+            views.setTextColor(R.id.weekly_pct, COLOR_RED)
+
+            views.setProgressBar(R.id.sonnet_bar, 100, 0, false)
+            views.setTextViewText(R.id.sonnet_pct, "\u2014")
+            views.setTextViewText(R.id.sonnet_reset, "")
+            views.setTextColor(R.id.sonnet_pct, COLOR_RED)
+
+            return views
+        }
 
         val sessionPct = data.fiveHourUtilization.toInt().coerceIn(0, 100)
         val weeklyPct = data.sevenDayUtilization.toInt().coerceIn(0, 100)
@@ -143,6 +183,7 @@ class PulseWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.plan_label, "")
         }
         views.setTextViewText(R.id.updated_ago, formatTimeSince(data.cachedAt))
+        views.setTextColor(R.id.updated_ago, 0x80FFFFFF.toInt())
 
         // Session
         views.setProgressBar(R.id.five_hour_bar, 100, sessionPct, false)

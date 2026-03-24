@@ -3,11 +3,13 @@ package com.ghayyath.claudepulse
 import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.work.*
 import java.util.concurrent.Executors
@@ -24,13 +26,43 @@ class SetupActivity : Activity() {
         val tokenInput = findViewById<EditText>(R.id.token_input)
         val connectButton = findViewById<Button>(R.id.connect_button)
         val statusText = findViewById<TextView>(R.id.status_text)
+        val errorBanner = findViewById<LinearLayout>(R.id.error_banner)
 
-        // If already connected, show status but let user update
+        // If already connected, validate the token in background
         if (TokenManager.hasCredentials(this)) {
-            statusText.text = "Connected \u2714  \u2014  Paste a new token below to update."
-            statusText.setTextColor(0xFF4CAF50.toInt())
+            statusText.text = "Validating token..."
+            statusText.setTextColor(0xFFAAAAAA.toInt())
             statusText.visibility = View.VISIBLE
             connectButton.text = "Update Token"
+
+            // Show masked token as hint
+            val masked = TokenManager.getMaskedToken(this)
+            if (masked != null) {
+                tokenInput.hint = masked
+            }
+
+            val appContext = applicationContext
+            executor.execute {
+                val result = ApiClient.fetchUsage(appContext)
+                runOnUiThread {
+                    if (isFinishing) return@runOnUiThread
+                    if (result.error == null) {
+                        // Token is valid
+                        statusText.text = "Connected \u2714"
+                        statusText.setTextColor(0xFF4CAF50.toInt())
+                        errorBanner.visibility = View.GONE
+                    } else {
+                        // Token is expired/invalid — show recovery banner
+                        showErrorState(statusText, errorBanner, tokenInput)
+                    }
+                }
+            }
+        } else {
+            // Check if we have a cached auth_error (came from widget tap)
+            val prefs = getSharedPreferences("pulse_cache", Context.MODE_PRIVATE)
+            if (prefs.getBoolean("auth_error", false)) {
+                showErrorState(statusText, errorBanner, tokenInput)
+            }
         }
 
         connectButton.setOnClickListener {
@@ -56,14 +88,19 @@ class SetupActivity : Activity() {
                 if (directResult.error == null) {
                     TokenManager.saveAccessToken(appContext, token)
                     ApiClient.cacheUsage(appContext, directResult)
+                    clearAuthError(appContext)
 
                     runOnUiThread {
                         if (isFinishing) return@runOnUiThread
-                        statusText.text = "Connected \u2714  \u2014  You can close this app and use the widget."
+                        statusText.text = "Connected \u2714"
                         statusText.setTextColor(0xFF4CAF50.toInt())
                         connectButton.text = "Update Token"
                         connectButton.isEnabled = true
                         tokenInput.text.clear()
+                        errorBanner.visibility = View.GONE
+                        // Show masked token as hint
+                        val masked = TokenManager.getMaskedToken(appContext)
+                        if (masked != null) tokenInput.hint = masked
                         triggerWidgetUpdate()
                         ensurePeriodicRefresh()
                     }
@@ -79,11 +116,15 @@ class SetupActivity : Activity() {
 
                     if (refreshResult.error == null) {
                         ApiClient.cacheUsage(appContext, refreshResult)
-                        statusText.text = "Connected \u2714  \u2014  You can close this app and use the widget."
+                        clearAuthError(appContext)
+                        statusText.text = "Connected \u2714"
                         statusText.setTextColor(0xFF4CAF50.toInt())
                         connectButton.text = "Update Token"
                         connectButton.isEnabled = true
                         tokenInput.text.clear()
+                        errorBanner.visibility = View.GONE
+                        val masked = TokenManager.getMaskedToken(appContext)
+                        if (masked != null) tokenInput.hint = masked
                         triggerWidgetUpdate()
                         ensurePeriodicRefresh()
                     } else {
@@ -95,6 +136,20 @@ class SetupActivity : Activity() {
                 }
             }
         }
+    }
+
+    private fun showErrorState(statusText: TextView, errorBanner: LinearLayout, tokenInput: EditText) {
+        statusText.text = "Token expired \u2014 paste a new one below"
+        statusText.setTextColor(0xFFF44336.toInt())
+        statusText.visibility = View.VISIBLE
+        errorBanner.visibility = View.VISIBLE
+        val masked = TokenManager.getMaskedToken(this)
+        if (masked != null) tokenInput.hint = masked
+    }
+
+    private fun clearAuthError(context: Context) {
+        context.getSharedPreferences("pulse_cache", Context.MODE_PRIVATE)
+            .edit().putBoolean("auth_error", false).apply()
     }
 
     override fun onDestroy() {

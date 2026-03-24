@@ -15,7 +15,12 @@ class RefreshWorker(
     override suspend fun doWork(): Result {
         val data = ApiClient.fetchUsage(context)
 
-        if (data.error == null) {
+        // Cache auth error state so widget and SetupActivity can read it
+        val prefs = context.getSharedPreferences("pulse_cache", Context.MODE_PRIVATE)
+        if (data.error == "auth_error") {
+            prefs.edit().putBoolean("auth_error", true).putLong("auth_error_at", System.currentTimeMillis()).apply()
+        } else if (data.error == null) {
+            prefs.edit().putBoolean("auth_error", false).apply()
             ApiClient.cacheUsage(context, data)
         }
 

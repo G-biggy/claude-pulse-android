@@ -26,6 +26,68 @@
         android:textSize="14sp"
         android:layout_marginBottom="32dp" />
 
+    <!-- Error banner - shown when token is expired/invalid -->
+    <LinearLayout
+        android:id="@+id/error_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#2A1A1A"
+        android:padding="16dp"
+        android:layout_marginBottom="16dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="\u26a0 Token Expired"
+            android:textColor="#F44336"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Log into Claude Code to refresh your credentials, then run this command to get your new token:"
+            android:textColor="#AAAAAA"
+            android:textSize="13sp"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:id="@+id/mac_command"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="macOS:\nsecurity find-generic-password -s &apos;Claude Code-credentials&apos; -w | python3 -c &quot;\nimport sys, json\ncreds = json.load(sys.stdin)\nprint(creds.get(&apos;claudeAiOauth&apos;, {}).get(&apos;refreshToken&apos;, &apos;NOT FOUND&apos;))\n&quot;"
+            android:textColor="#6ee7b7"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:background="#1A1A1A"
+            android:padding="12dp"
+            android:textIsSelectable="true"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/linux_command"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Linux:\npython3 -c &quot;\nimport json\nwith open(&apos;$HOME/.claude/.credentials.json&apos;) as f:\n    creds = json.load(f)\nprint(creds.get(&apos;claudeAiOauth&apos;, {}).get(&apos;refreshToken&apos;, &apos;NOT FOUND&apos;))\n&quot;"
+            android:textColor="#6ee7b7"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:background="#1A1A1A"
+            android:padding="12dp"
+            android:textIsSelectable="true"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Paste the new token below."
+            android:textColor="#AAAAAA"
+            android:textSize="13sp" />
+    </LinearLayout>
+
     <EditText
         android:id="@+id/token_input"
         android:layout_width="match_parent"

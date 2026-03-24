@@ -205,14 +205,29 @@
             android:paddingStart="62dp" />
     </LinearLayout>
 
-    <!-- Footer: Refresh -->
-    <TextView
-        android:id="@+id/refresh_button"
-        android:layout_width="wrap_content"
+    <!-- Footer: Refresh Now | Usage Page -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Refresh Now"
-        android:textColor="#6ee7b7"
-        android:textSize="11sp"
-        android:layout_marginTop="2dp" />
+        android:orientation="horizontal"
+        android:layout_marginTop="2dp">
+
+        <TextView
+            android:id="@+id/refresh_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Refresh Now"
+            android:textColor="#6ee7b7"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/usage_page_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Usage Page"
+            android:textColor="#6ee7b7"
+            android:textSize="11sp" />
+    </LinearLayout>
 
 </LinearLayout>
