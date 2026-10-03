@@ -87,7 +87,8 @@ class SetupActivity : Activity() {
         }
 
         connectButton.setOnClickListener {
-            val token = tokenInput.text.toString().trim()
+            // Strip all whitespace: tokens copied from a terminal often wrap across lines
+            val token = tokenInput.text.toString().replace(Regex("\\s+"), "")
             if (token.isEmpty()) {
                 statusText.text = "Please paste a token"
                 statusText.setTextColor(0xFFF44336.toInt())
