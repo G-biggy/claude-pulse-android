@@ -14,13 +14,13 @@ object ApiClient {
 
     fun fetchUsage(context: Context): UsageData {
         val token = TokenManager.getAccessToken(context)
-            ?: return UsageData.placeholder().copy(error = "auth_error")
+            ?: return UsageData.placeholder().copy(error = TokenManager.lastRefreshError ?: "auth_error")
 
         val result = callUsageApi(token)
 
         if (result.error == "auth_error") {
             val freshToken = TokenManager.refreshAccessToken(context)
-                ?: return UsageData.placeholder().copy(error = "auth_error")
+                ?: return UsageData.placeholder().copy(error = TokenManager.lastRefreshError ?: "auth_error")
             return callUsageApi(freshToken)
         }
 

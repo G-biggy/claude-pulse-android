@@ -13,8 +13,12 @@ object TokenManager {
     private const val KEY_ACCESS_TOKEN = "access_token"
     private const val KEY_EXPIRES_AT = "expires_at"
 
-    private const val REFRESH_URL = "https://console.anthropic.com/v1/oauth/token"
+    private const val REFRESH_URL = "https://platform.claude.com/v1/oauth/token"
     private const val CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+
+    /** Why the last refresh failed: "auth_error", "rate_limited", "Offline", or "HTTP nnn". */
+    @Volatile var lastRefreshError: String? = null
+        private set
 
     private fun getPrefs(context: Context): SharedPreferences {
         return context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -34,13 +38,14 @@ object TokenManager {
             .commit()
     }
 
-    /** Save an access token directly — no refresh token rotation */
+    /**
+     * Save an access token directly — no refresh token rotation. No local expiry:
+     * long-lived tokens (`claude setup-token`) last months; a 401 sends the user back to setup.
+     */
     fun saveAccessToken(context: Context, accessToken: String) {
-        // Set expiry to ~8 hours from now (access tokens last ~8h)
-        val expiresAt = System.currentTimeMillis() + (8 * 3600 * 1000)
         getPrefs(context).edit()
             .putString(KEY_ACCESS_TOKEN, accessToken)
-            .putLong(KEY_EXPIRES_AT, expiresAt)
+            .putLong(KEY_EXPIRES_AT, Long.MAX_VALUE)
             .remove(KEY_REFRESH_TOKEN)
             .commit()
     }
@@ -81,7 +86,11 @@ object TokenManager {
             return currentToken
         }
 
-        val refreshToken = prefs.getString(KEY_REFRESH_TOKEN, null) ?: return null
+        val refreshToken = prefs.getString(KEY_REFRESH_TOKEN, null)
+        if (refreshToken == null) {
+            lastRefreshError = "auth_error"
+            return null
+        }
 
         val url = URL(REFRESH_URL)
         val conn = url.openConnection() as HttpURLConnection
@@ -113,11 +122,19 @@ object TokenManager {
                     .putLong(KEY_EXPIRES_AT, expiresAt)
                     .commit()  // sync write
 
+                lastRefreshError = null
                 newAccessToken
             } else {
+                val errorBody = try { conn.errorStream?.bufferedReader()?.readText() } catch (_: Exception) { null }
+                lastRefreshError = when {
+                    conn.responseCode == 429 || errorBody?.contains("rate_limit_error") == true -> "rate_limited"
+                    conn.responseCode == 400 || conn.responseCode == 401 -> "auth_error"  // invalid_grant
+                    else -> "HTTP ${conn.responseCode}"
+                }
                 null
             }
         } catch (e: Exception) {
+            lastRefreshError = "Offline"
             null
         } finally {
             conn.disconnect()
