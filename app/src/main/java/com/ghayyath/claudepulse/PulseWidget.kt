@@ -10,6 +10,7 @@ import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.RemoteViews
 import androidx.work.*
 import java.text.SimpleDateFormat
@@ -27,6 +28,15 @@ class PulseWidget : AppWidgetProvider() {
         private const val COLOR_RED = 0xFFF44336.toInt()    // 90-100%
         private const val ACTION_REFRESH = "com.ghayyath.claudepulse.ACTION_REFRESH"
         private const val WORK_NAME = "pulse_periodic_refresh"
+
+        /** Layout slots for limit rows: container, label, bar, pct, reset. Extra limits beyond this are dropped. */
+        private data class RowIds(val row: Int, val label: Int, val bar: Int, val pct: Int, val reset: Int)
+        private val ROWS = listOf(
+            RowIds(R.id.row1, R.id.row1_label, R.id.row1_bar, R.id.row1_pct, R.id.row1_reset),
+            RowIds(R.id.row2, R.id.row2_label, R.id.row2_bar, R.id.row2_pct, R.id.row2_reset),
+            RowIds(R.id.row3, R.id.row3_label, R.id.row3_bar, R.id.row3_pct, R.id.row3_reset),
+            RowIds(R.id.row4, R.id.row4_label, R.id.row4_bar, R.id.row4_pct, R.id.row4_reset)
+        )
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -143,73 +153,44 @@ class PulseWidget : AppWidgetProvider() {
     private fun buildFullViews(context: Context, data: UsageData, hasAuthError: Boolean = false): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_layout)
 
-        if (hasAuthError) {
-            // Error state: show dashes instead of stale numbers, red status text
-            if (data.planLabel.isNotEmpty()) {
-                views.setTextViewText(R.id.plan_label, "\u00b7 ${data.planLabel}")
-            } else {
-                views.setTextViewText(R.id.plan_label, "")
-            }
-            views.setTextViewText(R.id.updated_ago, "Token expired \u00b7 Tap to fix")
-            views.setTextColor(R.id.updated_ago, COLOR_RED)
-
-            // All bars to 0, all percentages to em dash
-            views.setProgressBar(R.id.five_hour_bar, 100, 0, false)
-            views.setTextViewText(R.id.five_hour_pct, "\u2014")
-            views.setTextViewText(R.id.five_hour_reset, "")
-            views.setTextColor(R.id.five_hour_pct, COLOR_RED)
-
-            views.setProgressBar(R.id.weekly_bar, 100, 0, false)
-            views.setTextViewText(R.id.weekly_pct, "\u2014")
-            views.setTextViewText(R.id.weekly_reset, "")
-            views.setTextColor(R.id.weekly_pct, COLOR_RED)
-
-            views.setProgressBar(R.id.sonnet_bar, 100, 0, false)
-            views.setTextViewText(R.id.sonnet_pct, "\u2014")
-            views.setTextViewText(R.id.sonnet_reset, "")
-            views.setTextColor(R.id.sonnet_pct, COLOR_RED)
-
-            return views
-        }
-
-        val sessionPct = data.fiveHourUtilization.toInt().coerceIn(0, 100)
-        val weeklyPct = data.sevenDayUtilization.toInt().coerceIn(0, 100)
-        val sonnetPct = data.sonnetUtilization.toInt().coerceIn(0, 100)
-
         // Header
         if (data.planLabel.isNotEmpty()) {
             views.setTextViewText(R.id.plan_label, "\u00b7 ${data.planLabel}")
         } else {
             views.setTextViewText(R.id.plan_label, "")
         }
-        views.setTextViewText(R.id.updated_ago, formatTimeSince(data.cachedAt))
-        views.setTextColor(R.id.updated_ago, 0x80FFFFFF.toInt())
-
-        // Session
-        views.setProgressBar(R.id.five_hour_bar, 100, sessionPct, false)
-        views.setTextViewText(R.id.five_hour_pct, "${sessionPct}%")
-        views.setTextViewText(R.id.five_hour_reset, formatResetTime(data.fiveHourResetsAt))
-        views.setTextColor(R.id.five_hour_pct, getColor(sessionPct))
-        setBarTint(views, R.id.five_hour_bar, sessionPct)
-
-        // Weekly
-        views.setProgressBar(R.id.weekly_bar, 100, weeklyPct, false)
-        views.setTextViewText(R.id.weekly_pct, "${weeklyPct}%")
-        views.setTextViewText(R.id.weekly_reset, formatResetTime(data.sevenDayResetsAt))
-        views.setTextColor(R.id.weekly_pct, getColor(weeklyPct))
-        setBarTint(views, R.id.weekly_bar, weeklyPct)
-
-        // Sonnet
-        views.setProgressBar(R.id.sonnet_bar, 100, sonnetPct, false)
-        views.setTextViewText(R.id.sonnet_pct, "${sonnetPct}%")
-        val sonnetResetText = if (data.sonnetResetsAt.isNullOrEmpty() || data.sonnetResetsAt == "null") {
-            "No active limit"
+        if (hasAuthError) {
+            views.setTextViewText(R.id.updated_ago, "Token expired \u00b7 Tap to fix")
+            views.setTextColor(R.id.updated_ago, COLOR_RED)
         } else {
-            formatResetTime(data.sonnetResetsAt)
+            views.setTextViewText(R.id.updated_ago, formatTimeSince(data.cachedAt))
+            views.setTextColor(R.id.updated_ago, 0x80FFFFFF.toInt())
         }
-        views.setTextViewText(R.id.sonnet_reset, sonnetResetText)
-        views.setTextColor(R.id.sonnet_pct, getColor(sonnetPct))
-        setBarTint(views, R.id.sonnet_bar, sonnetPct)
+
+        ROWS.forEachIndexed { i, ids ->
+            val limit = data.limits.getOrNull(i)
+            if (limit == null) {
+                views.setViewVisibility(ids.row, View.GONE)
+                return@forEachIndexed
+            }
+            views.setViewVisibility(ids.row, View.VISIBLE)
+            views.setTextViewText(ids.label, limit.label)
+
+            if (hasAuthError) {
+                // Error state: dashes instead of stale numbers
+                views.setProgressBar(ids.bar, 100, 0, false)
+                views.setTextViewText(ids.pct, "\u2014")
+                views.setTextViewText(ids.reset, "")
+                views.setTextColor(ids.pct, COLOR_RED)
+            } else {
+                val pct = limit.percent.coerceIn(0, 100)
+                views.setProgressBar(ids.bar, 100, pct, false)
+                views.setTextViewText(ids.pct, "${pct}%")
+                views.setTextViewText(ids.reset, formatResetTime(limit.resetsAt))
+                views.setTextColor(ids.pct, getColor(pct))
+                setBarTint(views, ids.bar, pct)
+            }
+        }
 
         return views
     }
@@ -217,24 +198,19 @@ class PulseWidget : AppWidgetProvider() {
     private fun buildCompactViews(context: Context, data: UsageData): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_layout_small)
 
-        val sessionPct = data.fiveHourUtilization.toInt().coerceIn(0, 100)
-        val weeklyPct = data.sevenDayUtilization.toInt().coerceIn(0, 100)
-        val sonnetPct = data.sonnetUtilization.toInt().coerceIn(0, 100)
-
-        views.setProgressBar(R.id.five_hour_bar, 100, sessionPct, false)
-        views.setTextViewText(R.id.five_hour_pct, "${sessionPct}%")
-        views.setTextColor(R.id.five_hour_pct, getColor(sessionPct))
-        setBarTint(views, R.id.five_hour_bar, sessionPct)
-
-        views.setProgressBar(R.id.weekly_bar, 100, weeklyPct, false)
-        views.setTextViewText(R.id.weekly_pct, "${weeklyPct}%")
-        views.setTextColor(R.id.weekly_pct, getColor(weeklyPct))
-        setBarTint(views, R.id.weekly_bar, weeklyPct)
-
-        views.setProgressBar(R.id.sonnet_bar, 100, sonnetPct, false)
-        views.setTextViewText(R.id.sonnet_pct, "${sonnetPct}%")
-        views.setTextColor(R.id.sonnet_pct, getColor(sonnetPct))
-        setBarTint(views, R.id.sonnet_bar, sonnetPct)
+        ROWS.forEachIndexed { i, ids ->
+            val limit = data.limits.getOrNull(i)
+            if (limit == null) {
+                views.setViewVisibility(ids.row, View.GONE)
+                return@forEachIndexed
+            }
+            val pct = limit.percent.coerceIn(0, 100)
+            views.setViewVisibility(ids.row, View.VISIBLE)
+            views.setProgressBar(ids.bar, 100, pct, false)
+            views.setTextViewText(ids.pct, "${pct}%")
+            views.setTextColor(ids.pct, getColor(pct))
+            setBarTint(views, ids.bar, pct)
+        }
 
         return views
     }
@@ -287,30 +263,14 @@ class PulseWidget : AppWidgetProvider() {
         }
     }
 
-    private fun cacheData(context: Context, data: UsageData) {
-        val prefs = context.getSharedPreferences("pulse_cache", Context.MODE_PRIVATE)
-        prefs.edit()
-            .putFloat("five_hour", data.fiveHourUtilization.toFloat())
-            .putString("five_hour_reset", data.fiveHourResetsAt)
-            .putFloat("seven_day", data.sevenDayUtilization.toFloat())
-            .putString("seven_day_reset", data.sevenDayResetsAt)
-            .putFloat("sonnet", data.sonnetUtilization.toFloat())
-            .putString("sonnet_reset", data.sonnetResetsAt)
-            .putString("plan_label", data.planLabel)
-            .putString("cached_at", data.cachedAt)
-            .apply()
-    }
+    private fun cacheData(context: Context, data: UsageData) = ApiClient.cacheUsage(context, data)
 
     private fun loadCachedData(context: Context): UsageData? {
         val prefs = context.getSharedPreferences("pulse_cache", Context.MODE_PRIVATE)
-        if (!prefs.contains("five_hour")) return null
+        val raw = prefs.getString("limits_json", null) ?: return null
+        val limits = try { UsageData.limitsFromJson(raw) } catch (_: Exception) { return null }
         return UsageData(
-            fiveHourUtilization = prefs.getFloat("five_hour", 0f).toDouble(),
-            fiveHourResetsAt = prefs.getString("five_hour_reset", null),
-            sevenDayUtilization = prefs.getFloat("seven_day", 0f).toDouble(),
-            sevenDayResetsAt = prefs.getString("seven_day_reset", null),
-            sonnetUtilization = prefs.getFloat("sonnet", 0f).toDouble(),
-            sonnetResetsAt = prefs.getString("sonnet_reset", null),
+            limits = limits,
             planLabel = prefs.getString("plan_label", "") ?: "",
             cachedAt = prefs.getString("cached_at", null)
         )

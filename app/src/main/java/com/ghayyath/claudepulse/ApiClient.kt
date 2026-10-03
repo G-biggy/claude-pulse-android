@@ -36,12 +36,7 @@ object ApiClient {
     fun cacheUsage(context: Context, data: UsageData) {
         val prefs = context.getSharedPreferences("pulse_cache", Context.MODE_PRIVATE)
         prefs.edit()
-            .putFloat("five_hour", data.fiveHourUtilization.toFloat())
-            .putString("five_hour_reset", data.fiveHourResetsAt)
-            .putFloat("seven_day", data.sevenDayUtilization.toFloat())
-            .putString("seven_day_reset", data.sevenDayResetsAt)
-            .putFloat("sonnet", data.sonnetUtilization.toFloat())
-            .putString("sonnet_reset", data.sonnetResetsAt)
+            .putString("limits_json", UsageData.limitsToJson(data.limits))
             .putString("plan_label", data.planLabel)
             .putString("cached_at", data.cachedAt)
             .apply()

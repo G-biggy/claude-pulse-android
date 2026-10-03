@@ -8,16 +8,18 @@
     android:padding="8dp"
     android:gravity="center_vertical">
 
-    <!-- Session -->
+    <!-- Limit row 1 (hidden unless populated) -->
     <LinearLayout
+        android:id="@+id/row1"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="4dp">
+        android:paddingVertical="2dp"
+        android:visibility="gone">
 
         <ProgressBar
-            android:id="@+id/five_hour_bar"
+            android:id="@+id/row1_bar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="0dp"
             android:layout_height="6dp"
@@ -28,7 +30,7 @@
             android:layout_marginEnd="6dp" />
 
         <TextView
-            android:id="@+id/five_hour_pct"
+            android:id="@+id/row1_pct"
             android:layout_width="32dp"
             android:layout_height="wrap_content"
             android:text="0%"
@@ -38,16 +40,18 @@
             android:gravity="end" />
     </LinearLayout>
 
-    <!-- Weekly -->
+    <!-- Limit row 2 (hidden unless populated) -->
     <LinearLayout
+        android:id="@+id/row2"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="4dp">
+        android:paddingVertical="2dp"
+        android:visibility="gone">
 
         <ProgressBar
-            android:id="@+id/weekly_bar"
+            android:id="@+id/row2_bar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="0dp"
             android:layout_height="6dp"
@@ -58,7 +62,7 @@
             android:layout_marginEnd="6dp" />
 
         <TextView
-            android:id="@+id/weekly_pct"
+            android:id="@+id/row2_pct"
             android:layout_width="32dp"
             android:layout_height="wrap_content"
             android:text="0%"
@@ -68,15 +72,18 @@
             android:gravity="end" />
     </LinearLayout>
 
-    <!-- Sonnet -->
+    <!-- Limit row 3 (hidden unless populated) -->
     <LinearLayout
+        android:id="@+id/row3"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:paddingVertical="2dp"
+        android:visibility="gone">
 
         <ProgressBar
-            android:id="@+id/sonnet_bar"
+            android:id="@+id/row3_bar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="0dp"
             android:layout_height="6dp"
@@ -87,7 +94,39 @@
             android:layout_marginEnd="6dp" />
 
         <TextView
-            android:id="@+id/sonnet_pct"
+            android:id="@+id/row3_pct"
+            android:layout_width="32dp"
+            android:layout_height="wrap_content"
+            android:text="0%"
+            android:textColor="#6ee7b7"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <!-- Limit row 4 (hidden unless populated) -->
+    <LinearLayout
+        android:id="@+id/row4"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingVertical="2dp"
+        android:visibility="gone">
+
+        <ProgressBar
+            android:id="@+id/row4_bar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="6dp"
+            android:layout_weight="1"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/progress_bar_green"
+            android:layout_marginEnd="6dp" />
+
+        <TextView
+            android:id="@+id/row4_pct"
             android:layout_width="32dp"
             android:layout_height="wrap_content"
             android:text="0%"
