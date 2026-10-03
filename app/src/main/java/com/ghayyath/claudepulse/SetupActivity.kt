@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -28,6 +29,15 @@ class SetupActivity : Activity() {
         val connectButton = findViewById<Button>(R.id.connect_button)
         val statusText = findViewById<TextView>(R.id.status_text)
         val errorBanner = findViewById<LinearLayout>(R.id.error_banner)
+        val signInButton = findViewById<Button>(R.id.sign_in_button)
+
+        signInButton.setOnClickListener {
+            val url = TokenManager.buildLoginUrl(this)
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            statusText.text = "After approving, copy the code and paste it below."
+            statusText.setTextColor(0xFFAAAAAA.toInt())
+            statusText.visibility = View.VISIBLE
+        }
 
         // If already connected, validate the token in background
         if (TokenManager.hasCredentials(this)) {
@@ -107,6 +117,32 @@ class SetupActivity : Activity() {
             val appContext = applicationContext
 
             executor.execute {
+                // Code from the "Sign in with Claude" flow looks like "code#state"
+                if (TokenManager.hasPendingLogin(appContext) && token.contains("#")) {
+                    val loginError = TokenManager.completeLogin(appContext, token)
+                    val result = if (loginError == null) ApiClient.fetchUsage(appContext) else null
+                    runOnUiThread {
+                        if (isFinishing) return@runOnUiThread
+                        if (result != null && result.error == null) {
+                            ApiClient.cacheUsage(appContext, result)
+                            clearAuthError(appContext)
+                            showConnected(statusText, connectButton, tokenInput, errorBanner)
+                        } else {
+                            statusText.text = when (loginError ?: result?.error) {
+                                "auth_error" -> "Code rejected or expired. Tap Sign in with Claude and try again."
+                                "state_mismatch" -> "That code is from an older sign-in. Tap Sign in with Claude again."
+                                "rate_limited" -> "Rate limited by Anthropic. Wait a minute and try again."
+                                "Offline" -> "Can't reach Anthropic. Check your connection."
+                                else -> "Couldn't connect (${loginError ?: result?.error}). Try again."
+                            }
+                            statusText.setTextColor(0xFFF44336.toInt())
+                            connectButton.text = if (TokenManager.hasCredentials(appContext)) "Update Token" else "Connect"
+                            connectButton.isEnabled = true
+                        }
+                    }
+                    return@execute
+                }
+
                 // Try as access token first
                 val directResult = ApiClient.fetchUsageWithAccessToken(appContext, token)
 
@@ -168,6 +204,18 @@ class SetupActivity : Activity() {
                 }
             }
         }
+    }
+
+    private fun showConnected(statusText: TextView, connectButton: Button, tokenInput: EditText, errorBanner: LinearLayout) {
+        statusText.text = "Connected \u2714"
+        statusText.setTextColor(0xFF4CAF50.toInt())
+        statusText.visibility = View.VISIBLE
+        connectButton.text = "Update Token"
+        connectButton.isEnabled = true
+        tokenInput.text.clear()
+        errorBanner.visibility = View.GONE
+        triggerWidgetUpdate()
+        ensurePeriodicRefresh()
     }
 
     private fun showErrorState(statusText: TextView, errorBanner: LinearLayout, tokenInput: EditText) {

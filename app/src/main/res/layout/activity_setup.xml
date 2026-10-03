@@ -27,10 +27,11 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Paste your access token or refresh token"
+        android:text="1. Sign in with your Claude account.\n2. Copy the code the page shows you.\n3. Paste it below and tap Connect."
         android:textColor="#AAAAAA"
         android:textSize="14sp"
-        android:layout_marginBottom="32dp" />
+        android:lineSpacingExtra="4dp"
+        android:layout_marginBottom="24dp" />
 
     <!-- Error banner - shown when token is expired/invalid -->
     <LinearLayout
@@ -46,7 +47,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="\u26a0 Token Expired"
+            android:text="\u26a0 Signed out"
             android:textColor="#F44336"
             android:textSize="16sp"
             android:textStyle="bold"
@@ -55,44 +56,21 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Log into Claude Code to refresh your credentials, then run this command to get your new token:"
-            android:textColor="#AAAAAA"
-            android:textSize="13sp"
-            android:layout_marginBottom="12dp" />
-
-        <TextView
-            android:id="@+id/mac_command"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="macOS:\nsecurity find-generic-password -s &apos;Claude Code-credentials&apos; -w | python3 -c &quot;\nimport sys, json\ncreds = json.load(sys.stdin)\nprint(creds.get(&apos;claudeAiOauth&apos;, {}).get(&apos;refreshToken&apos;, &apos;NOT FOUND&apos;))\n&quot;"
-            android:textColor="#6ee7b7"
-            android:textSize="11sp"
-            android:fontFamily="monospace"
-            android:background="#1A1A1A"
-            android:padding="12dp"
-            android:textIsSelectable="true"
-            android:layout_marginBottom="8dp" />
-
-        <TextView
-            android:id="@+id/linux_command"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Linux:\npython3 -c &quot;\nimport json\nwith open(&apos;$HOME/.claude/.credentials.json&apos;) as f:\n    creds = json.load(f)\nprint(creds.get(&apos;claudeAiOauth&apos;, {}).get(&apos;refreshToken&apos;, &apos;NOT FOUND&apos;))\n&quot;"
-            android:textColor="#6ee7b7"
-            android:textSize="11sp"
-            android:fontFamily="monospace"
-            android:background="#1A1A1A"
-            android:padding="12dp"
-            android:textIsSelectable="true"
-            android:layout_marginBottom="8dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Paste the new token below."
+            android:text="Your Claude session expired. Sign in again to reconnect the widget."
             android:textColor="#AAAAAA"
             android:textSize="13sp" />
     </LinearLayout>
+
+    <Button
+        android:id="@+id/sign_in_button"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="Sign in with Claude"
+        android:textColor="#6ee7b7"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:background="#2A2A2A"
+        android:layout_marginBottom="16dp" />
 
     <EditText
         android:id="@+id/token_input"
@@ -102,7 +80,7 @@
         android:maxLines="6"
         android:scrollbars="vertical"
         android:gravity="top|start"
-        android:hint="Token..."
+        android:hint="Paste code here..."
         android:textColorHint="#555555"
         android:textColor="#FFFFFF"
         android:textSize="13sp"

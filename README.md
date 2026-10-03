@@ -53,9 +53,9 @@ The app connects directly to Anthropic’s usage API from your phone. No server,
 
 ### Setup Flow
 
-1. On your computer, run a helper script to extract your OAuth refresh token from Claude Code
-2. Open Claude Pulse on your phone and paste the token
-3. Tap **Connect** — the app verifies the token and starts fetching usage data
+1. Open Claude Pulse on your phone and tap **Sign in with Claude**
+2. Approve access in the browser, then copy the code the page shows you
+3. Paste it into the app and tap **Connect** — the app gets its own token and starts fetching usage data
 4. Add the widget to your home screen from your launcher’s widget picker
 
 You can reopen the app at any time to update your token if needed.
@@ -74,7 +74,9 @@ Claude’s usage API uses OAuth authentication tied to Claude Code. There’s no
 
 ## Install
 
-### 1. Get Your Refresh Token
+### 1. (Optional) Get a Refresh Token Manually
+
+The app's **Sign in with Claude** button is the recommended path: it gives the phone its own session. Pasting a refresh token copied from Claude Code also works, but that token is shared with your computer and rotates on every refresh, so one side can sign the other out.
 
 On your Mac or Linux machine with Claude Code installed and signed in:
 
@@ -111,7 +113,7 @@ Transfer it to your phone and install. Android will ask you to allow installatio
   <img src="docs/images/setup.png" width="280" alt="Claude Pulse setup screen" />
 </p>
 
-Open Claude Pulse → paste your refresh token → tap **Connect**. The app will verify the token and start fetching usage data. Add the widget to your home screen from your launcher’s widget picker.
+Open Claude Pulse → **Sign in with Claude** → paste the code → tap **Connect**. The app will verify the token and start fetching usage data. Add the widget to your home screen from your launcher’s widget picker.
 
 ## Build from Source
 
