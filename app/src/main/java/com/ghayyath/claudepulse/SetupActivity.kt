@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -94,7 +95,10 @@ class SetupActivity : Activity() {
                 return@setOnClickListener
             }
 
+            (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                .hideSoftInputFromWindow(tokenInput.windowToken, 0)
             connectButton.isEnabled = false
+            connectButton.text = "Connecting..."
             statusText.text = "Connecting..."
             statusText.setTextColor(0xFFAAAAAA.toInt())
             statusText.visibility = View.VISIBLE
@@ -148,10 +152,17 @@ class SetupActivity : Activity() {
                         triggerWidgetUpdate()
                         ensurePeriodicRefresh()
                     } else {
-                        statusText.text = "Invalid token. Check and try again."
+                        statusText.text = when (refreshResult.error) {
+                            "auth_error" -> "Invalid token. Check and try again."
+                            "rate_limited" -> "Rate limited by Anthropic. Wait a minute and try again."
+                            "Offline" -> "Can't reach Anthropic. Check your connection."
+                            else -> "Couldn't connect (${refreshResult.error}). Try again."
+                        }
                         statusText.setTextColor(0xFFF44336.toInt())
+                        // Only discard the token if Anthropic actually rejected it
+                        if (refreshResult.error == "auth_error") TokenManager.clearCredentials(appContext)
+                        connectButton.text = if (TokenManager.hasCredentials(appContext)) "Update Token" else "Connect"
                         connectButton.isEnabled = true
-                        TokenManager.clearCredentials(appContext)
                     }
                 }
             }

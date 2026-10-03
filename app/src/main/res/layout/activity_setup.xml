@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="#1A1A1A">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     android:orientation="vertical"
     android:paddingLeft="32dp"
     android:paddingRight="32dp"
@@ -93,6 +99,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:minHeight="100dp"
+        android:maxLines="6"
+        android:scrollbars="vertical"
         android:gravity="top|start"
         android:hint="Token..."
         android:textColorHint="#555555"
@@ -102,7 +110,16 @@
         android:background="#2A2A2A"
         android:padding="16dp"
         android:inputType="textMultiLine"
-        android:layout_marginBottom="24dp" />
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/status_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#AAAAAA"
+        android:textSize="13sp"
+        android:layout_marginBottom="12dp"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/connect_button"
@@ -115,12 +132,7 @@
         android:background="#6ee7b7"
         android:layout_marginBottom="16dp" />
 
-    <TextView
-        android:id="@+id/status_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="#AAAAAA"
-        android:textSize="13sp"
-        android:visibility="gone" />
 
 </LinearLayout>
+
+</ScrollView>
